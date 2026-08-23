@@ -1,8 +1,7 @@
+require('dotenv').config({ path: './.env' });
 
-import * as dotenv from 'dotenv';
-dotenv.config({ path: './.env' }); 
+const { Server } = require('./Server');
 
-import { Server } from "./Server"; 
 let server = new Server().app;
 let port = process.env.PORT;
 server.listen(port, () => {
