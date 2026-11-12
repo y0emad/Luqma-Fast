@@ -1,3 +1,13 @@
 node_modules
-.env
+dist
+coverage
 
+# Secrets: only the example and the test env (fake values) are committed
+.env
+.env.*
+!.env.example
+!.env.test
+
+# Uploaded images: keep the folders, never the files
+src/uploads/*/*
+!src/uploads/*/.gitkeep

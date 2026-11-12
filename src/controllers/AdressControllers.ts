@@ -1,125 +1,88 @@
+import type { NextFunction, Request, Response } from "express";
 import Address from "../models/Address";
-
-
+import { GlobalUtilis } from "../Utilis/GlobalUtilis";
+import { AppError } from "../Utilis/AppError";
 
 export class AddressControllers {
-    static async createAddress(req: any, res: any, next: any) {
+    static async createAddress(req: Request, res: Response, next: NextFunction) {
         try {
-            const userId = req.user.aud;
-
             const { landmark, lat, lon, house, title, address } = req.body;
-            const newAddress = new Address({ landmark, lat, lon, house, title, address, user_id: userId });
-            await newAddress.save();
-            res.status(200).json({ message: 'Address created successfully', status: 200 });
+            const data = await Address.create({ landmark, lat, lon, house, title, address, user_id: req.user!.aud });
+            res.status(201).json({ message: 'Address created successfully', status: 201, data });
         } catch (error) {
             next(error);
         }
     }
 
-    static async getAddress(req: any, res: any, next: any) {
-        const userId = req.user.aud;
-        const perPage = 5;
-        const currentPage = parseInt(req.query.page) || 1;
-        let nextPage: any = currentPage + 1;
-        const prevPage = currentPage == 1 ? null : currentPage - 1;
+    static async getAddress(req: Request, res: Response, next: NextFunction) {
         try {
-            const totalAddresses = await Address.countDocuments({ user_id: userId });
-            const totalPages = Math.ceil(totalAddresses / perPage);
-            if (totalPages == 0 || currentPage == totalPages) {
-
-                nextPage = null;
-            }
-            if (currentPage > totalPages) {
-                return res.status(404).json({ message: 'Page not found', status: 404 });
-            }
-
-            const addresses = await Address.find({ user_id: userId }).skip((currentPage * perPage) - perPage).limit(perPage);
-            res.status(200).json({ message: 'Addresses retrieved successfully', status: 200, data: addresses, pagination: { page: currentPage, perPage, totalPages, totalAddresses, nextPage, prevPage } });
+            const filter = { user_id: req.user!.aud };
+            const { page, perPage, skip } = GlobalUtilis.pageParams(req.query);
+            const [total, data] = await Promise.all([
+                Address.countDocuments(filter),
+                Address.find(filter).sort({ created_at: -1 }).skip(skip).limit(perPage),
+            ]);
+            res.status(200).json({ message: 'Addresses retrieved successfully', status: 200, data, pagination: GlobalUtilis.pagination(page, perPage, total) });
         } catch (error) {
             next(error);
         }
     }
 
-
-    static async updateAddress(req: any, res: any, next: any) {
+    static async updateAddress(req: Request, res: Response, next: NextFunction) {
         try {
-            const { id } = req.params;
             const { landmark, lat, lon, house, title, address } = req.body;
-            const updatedAddress = await Address.findByIdAndUpdate(id, { landmark, lat, lon, house, title, address, updated_at: new Date() }, { new: true });
-            res.status(200).json({ message: 'Address updated successfully', status: 200, data: updatedAddress });
+            const data = await Address.findOneAndUpdate(
+                { _id: req.params.id, user_id: req.user!.aud },
+                { landmark, lat, lon, house, title, address },
+                { new: true, runValidators: true },
+            );
+            if (!data) throw new AppError(404, 'Address not found');
+            res.status(200).json({ message: 'Address updated successfully', status: 200, data });
         } catch (error) {
             next(error);
         }
     }
 
-
-    static async deleteAddress(req: any, res: any, next: any) {
+    static async deleteAddress(req: Request, res: Response, next: NextFunction) {
         try {
-            const userId = req.user.aud;
-            const { id } = req.params;
-            await Address.findByIdAndDelete(id, { user_id: userId });
+            const deleted = await Address.findOneAndDelete({ _id: req.params.id, user_id: req.user!.aud });
+            if (!deleted) throw new AppError(404, 'Address not found');
             res.status(200).json({ message: 'Address deleted successfully', status: 200 });
         } catch (error) {
             next(error);
         }
     }
 
-    static async getAddressById(req: any, res: any, next: any) {
+    static async getAddressById(req: Request, res: Response, next: NextFunction) {
         try {
-            const userId = req.user.aud;
-            const id = req.params.AddressId;
-
-            const address = await Address.findOne({ _id: id, user_id: userId });
-
-            if (!address) {
-                return res.status(404).json({ message: 'Address not found', status: 404 });
-            }
-            res.status(200).json({
-                message: 'Address retrieved successfully',
-                status: 200,
-                data: address
-            });
+            const data = await Address.findOne({ _id: req.params.AddressId, user_id: req.user!.aud });
+            if (!data) throw new AppError(404, 'Address not found');
+            res.status(200).json({ message: 'Address retrieved successfully', status: 200, data });
         } catch (error) {
             next(error);
         }
     }
 
-
-
-    static async checkAddress(req: any, res: any, next: any) {
+    static async checkAddress(req: Request, res: Response, next: NextFunction) {
         try {
-            const userId = req.user.aud;
-            const { lat, lon } = req.query;
-            const address = await Address.findOne({ lat: parseFloat(lat), lon: parseFloat(lon), user_id: userId });
-            if (!address) {
-                return res.status(404).json({ message: 'Address not found', status: 404 });
-            }
-            res.status(200).json({
-                message: 'Address retrieved successfully',
-                status: 200,
-                data: address
-            });
+            const lat = parseFloat(String(req.query.lat));
+            const lon = parseFloat(String(req.query.lon));
+            const data = await Address.findOne({ lat, lon, user_id: req.user!.aud });
+            if (!data) throw new AppError(404, 'Address not found');
+            res.status(200).json({ message: 'Address retrieved successfully', status: 200, data });
         } catch (error) {
             next(error);
         }
     }
 
-
-    static async getAddressLimit(req: any, res: any, next: any) {
+    static async getAddressLimit(req: Request, res: Response, next: NextFunction) {
         try {
-            const userId = req.user.aud;
-
-            const limit = parseInt(req.query.limit) || 10;
-            const offset = parseInt(req.query.offset) || 0;
-            const addresses = await Address.find({ user_id: userId }).skip(offset).limit(limit);
-            res.status(200).json({
-                message: 'Addresses retrieved successfully',
-                status: 200,
-                data: addresses
-            });
+            const limit = Math.min(parseInt(String(req.query.limit ?? '10'), 10) || 10, 50);
+            const offset = parseInt(String(req.query.offset ?? '0'), 10) || 0;
+            const data = await Address.find({ user_id: req.user!.aud }).sort({ created_at: -1 }).skip(offset).limit(limit);
+            res.status(200).json({ message: 'Addresses retrieved successfully', status: 200, data });
         } catch (error) {
             next(error);
         }
     }
-
 }

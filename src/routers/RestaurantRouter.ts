@@ -18,14 +18,14 @@ class RestaurantRouter {
 
     getRoutes() {
 
-        this.router.get('/getNearbyRestaurants', GlobalUtilis.authenticateToken, RestaurantValidator.getNearbyRestaurants(), RestaurantControllers.getNearbyRestaurants, MiddleWare.checkErrors);
-        this.router.get('/searchNearbyRestaurants', GlobalUtilis.authenticateToken, RestaurantValidator.searchNearbyRestaurants(), RestaurantControllers.searchNearbyRestaurants, MiddleWare.checkErrors);
-        this.router.get('/getRestaurants', GlobalUtilis.authenticateToken, GlobalUtilis.authAdmin, RestaurantControllers.getRestaurants, MiddleWare.checkErrors);
+        this.router.get('/getNearbyRestaurants', GlobalUtilis.authenticateToken, RestaurantValidator.getNearbyRestaurants(), MiddleWare.checkErrors, RestaurantControllers.getNearbyRestaurants);
+        this.router.get('/searchNearbyRestaurants', GlobalUtilis.authenticateToken, RestaurantValidator.searchNearbyRestaurants(), MiddleWare.checkErrors, RestaurantControllers.searchNearbyRestaurants);
+        this.router.get('/getRestaurants', GlobalUtilis.authenticateToken, GlobalUtilis.authAdmin, RestaurantControllers.getRestaurants);
 
 
     }
     postRoutes() {
-        this.router.post('/createRestaurant', GlobalUtilis.authenticateToken, new GlobalUtilis().upload.single('restaurantImg'), RestaurantValidator.create(), MiddleWare.checkErrors, RestaurantControllers.createRestaurant);
+        this.router.post('/createRestaurant', GlobalUtilis.authenticateToken, GlobalUtilis.authAdmin, new GlobalUtilis().upload.single('restaurantImg'), RestaurantValidator.create(), MiddleWare.checkErrors, RestaurantControllers.createRestaurant);
 
     }
     patchRoutes() {

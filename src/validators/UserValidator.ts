@@ -1,125 +1,72 @@
-import { body, query } from "express-validator"
-import User from "../models/User"
+import { body } from "express-validator"
+
+const email = () => body('email', 'A valid email is required').isEmail().trim().toLowerCase();
+const otp = () => body('otp', 'OTP must be 6 digits').isString().matches(/^\d{6}$/);
+const password = (field = 'password') =>
+    body(field, 'Password must be at least 8 characters long').isString().isLength({ min: 8, max: 72 });
 
 export class UserValidator {
 
     static signup() {
         return [
-            body('email', 'Email is required').isEmail().custom((value) => {
-
-                return User.findOne({ email: value }).then((user) => {
-                    if (user) {
-                        throw new Error('Email already exists');
-                    }
-                }).catch((e) => {
-                    throw new Error(e);
-                });
-            }),
-            body('password', 'Password is required').isString().isLength({ min: 6 }).withMessage('Password must be at least 6 characters long'),
-            body('name', 'Name is required').isString().withMessage('Name is required'),
-            body('type', 'Type is required').isString()
-
-
-
+            email(),
+            password(),
+            body('name', 'Name must be between 2 and 100 characters long').isString().trim().isLength({ min: 2, max: 100 }),
         ]
-
     }
-
 
     static verifyEmail() {
-        return [
-
-            body('otp', 'OTP is required').isString()
-        ]
+        return [email(), otp()]
     }
 
+    static resendVerifyEmail() {
+        return [email()]
+    }
 
     static login() {
         return [
-            query('email', 'Email is required').isEmail(),
-            query('password', 'Password is required').isString().isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
+            email(),
+            body('password', 'Password is required').isString().notEmpty()
         ]
     }
 
     static sendOtpResetPass() {
-        return [
-            query('email', 'Email is required').isEmail()
-            // .custom((value) => {
-
-            //     const user = User.findOne({ email: value }).then((user) => {
-            //         if (!user) {
-            //             throw new Error('Email does not exist');
-            //         }
-            //     return user;
-            //     }).catch((e) => {
-            //         throw new Error(e);
-            //     });
-            // }
-        ]
+        return [email()]
     }
 
     static checkOtpResetPass() {
-        return [
-            query('email', 'Email is required').isEmail(),
-            query('otp', 'OTP is required').isString()
-        ]
+        return [email(), otp()]
     }
 
     static resetPassword() {
-        return [
-            body('email', 'Email is required').isEmail(),
-            body('otp', 'OTP is required').isString(),
-            body('newPassword', 'New password is required').isString().isLength({ min: 6 }).withMessage('New password must be at least 6 characters long')
-        ]
+        return [email(), otp(), password('newPassword')]
     }
 
     static updateName() {
         return [
-            body('name', 'Name is required').isString().isLength({ min: 2, max: 100 }).withMessage('Name must be between 2 and 100 characters long')
+            body('name', 'Name must be between 2 and 100 characters long').isString().trim().isLength({ min: 2, max: 100 })
         ]
     }
 
     static updateProfile() {
         return [
-            body('name', 'Name is required').isString().withMessage('Name is required'),
-            body('email', 'Email is required').isEmail().custom((value, { req }) => {
-
-                return User.findById(req.user.aud).then((user: any) => {
-                    if (user.email === value) {
-                        throw new Error('Email already used before');
-                    }
-                    else {
-                        return req.oldUser = user;
-                    }
-
-                }).catch((e) => {
-                    throw new Error(e);
-                });
-            }),
-            body('password', 'Password is required')
-
+            body('name', 'Name must be between 2 and 100 characters long').isString().trim().isLength({ min: 2, max: 100 }),
+            email(),
+            body('password', 'Your current password is required').isString().notEmpty()
         ]
     }
-
 
     static newToken() {
         return [
-            body('refreshToken', 'Refresh token is required').isString().custom((value) => {
-                if (!value) {
-
-                    throw new Error('Refresh token is required');
-                } else
-                    return value;
-            })
+            body('refreshToken', 'Refresh token is required').isString().notEmpty()
         ]
     }
 
-
     static updatePhoto() {
         return [
-            body('photoUser', "photo is required").custom((value, { req }) => {
+            body('photoUser').custom((_value, { req }) => {
                 if (!req.file) {
-                    throw new Error('Banner file is required');
+                    throw new Error('Photo file is required');
                 }
                 return true;
             })

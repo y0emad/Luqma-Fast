@@ -27,14 +27,14 @@ class AddressRouter {
 
     }
     postRoutes() {
-        this.router.post('/createAddress', GlobalUtilis.authenticateToken, AddressValidator.createAddress(), MiddleWare.checkErrors, AddressControllers.createAddress);
+        this.router.post('/createAddress', GlobalUtilis.authenticateToken, GlobalUtilis.requireVerified, AddressValidator.createAddress(), MiddleWare.checkErrors, AddressControllers.createAddress);
 
     }
     patchRoutes() {
-        this.router.patch('/updateAddress/:id', GlobalUtilis.authenticateToken, GlobalUtilis.authAdmin, AddressValidator.updateAddress(), MiddleWare.checkErrors, AddressControllers.updateAddress);
+        this.router.patch('/updateAddress/:id', GlobalUtilis.authenticateToken,AddressValidator.updateAddress(), MiddleWare.checkErrors, AddressControllers.updateAddress);
     }
     deleteRoutes() {
-        this.router.delete('/deleteAddress/:id', GlobalUtilis.authenticateToken, GlobalUtilis.authAdmin, AddressValidator.deleteAddress(), MiddleWare.checkErrors, AddressControllers.deleteAddress);
+        this.router.delete('/deleteAddress/:id', GlobalUtilis.authenticateToken,AddressValidator.deleteAddress(), MiddleWare.checkErrors, AddressControllers.deleteAddress);
     }
 
 }

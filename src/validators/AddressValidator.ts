@@ -29,13 +29,7 @@ export class AddressValidator {
 
     static deleteAddress() {
         return [
-            param('id', 'Address ID is required').isMongoId().custom(async (value, { req }) => {
-                const address = await Address.findById(value);
-                if (!address) {
-                    return Promise.reject('Address not found');
-                }
-                return true;
-            })
+            param('id', 'Address ID is required').isMongoId()
         ]
     }
 
