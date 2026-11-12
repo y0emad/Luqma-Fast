@@ -3,10 +3,8 @@ import mongoose from "mongoose";
 import { afterAll, beforeAll, vi } from "vitest";
 import { Redis } from "../src/Utilis/Redis";
 
-// Load the test env BEFORE any app code runs, so everything connects to the test database.
 dotenv.config({ path: ".env.test", override: true, quiet: true });
 
-// Never send real emails from tests. Tests read the OTP from these mocks' calls.
 vi.mock("../src/Utilis/NodeMailer", () => ({
   sendVerifyEmail: vi.fn(async () => undefined),
   sendResetPasswordEmail: vi.fn(async () => undefined),

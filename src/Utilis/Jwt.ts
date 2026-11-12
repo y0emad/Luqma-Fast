@@ -13,8 +13,6 @@ export class Jwt {
         return jwt.sign(payload, getEnvironment().tokenSecret, { expiresIn: '1d' })
     }
 
-    // One refresh token per user, kept in Redis: a new login or refresh replaces it,
-    // and logout deletes it, so an old refresh token stops working.
     static async jwtRefreshSign(payload: TokenPayload) {
         const refreshToken = jwt.sign(payload, getEnvironment().tokenRefreshSecret, { expiresIn: "1y", jwtid: randomUUID() })
         await Redis.setRedis(refreshKey(String(payload.aud)), refreshToken, REFRESH_TTL_SECONDS);

@@ -5,8 +5,6 @@ import { GlobalUtilis } from "../Utilis/GlobalUtilis";
 
 export class MiddleWare {
 
-    // Returns the first validation error. Files multer already saved for this
-    // request are deleted, so a rejected request leaves nothing on disk.
     static async checkErrors(req: Request, _res: Response, next: NextFunction) {
         const result = validationResult(req);
         if (result.isEmpty()) return next();

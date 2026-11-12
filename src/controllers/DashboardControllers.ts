@@ -8,8 +8,6 @@ import { AppError } from "../Utilis/AppError";
 import { dayRange, withOpenFlag, APP_TZ } from "../Utilis/OpeningHours";
 import { ORDER_STATUSES } from "../Utilis/OrderStatus";
 
-// Everything here works on req.restaurant (loaded by GlobalUtilis.authRestaurant),
-// so a restaurant can only ever see and change its own data.
 const pick = (body: Record<string, any>, keys: string[]) =>
     Object.fromEntries(keys.filter((k) => body[k] !== undefined).map((k) => [k, body[k]]));
 
@@ -47,7 +45,6 @@ export class DashboardControllers {
 
     static async getOrders(req: Request, res: Response, next: NextFunction) {
         try {
-            // Unpaid card orders aren't the restaurant's business until they're paid.
             const filter: Record<string, any> = { restaurant_id: req.restaurant._id, status: { $ne: 'awaiting_payment' } };
             if (req.query.status && req.query.status !== 'awaiting_payment') filter.status = req.query.status;
             const { page, perPage, skip } = GlobalUtilis.pageParams(req.query, 10);
@@ -82,7 +79,6 @@ export class DashboardControllers {
         }
     }
 
-    // A category that still has items can't be deleted, so no item is left without one.
     static async deleteCategory(req: Request, res: Response, next: NextFunction) {
         try {
             const category = await ownCategory(req.restaurant._id, req.params.id).catch(() => null);
@@ -147,7 +143,6 @@ export class DashboardControllers {
         }
     }
 
-    // Past orders keep their own copy of the item's name and price, so deleting is safe.
     static async deleteItem(req: Request, res: Response, next: NextFunction) {
         try {
             const item = await Items.findOneAndDelete({ _id: req.params.id, restaurant_id: req.restaurant._id });
@@ -159,8 +154,6 @@ export class DashboardControllers {
         }
     }
 
-    // One day (today by default, in the app timezone): orders per status, revenue from
-    // delivered orders only, and the five best-selling items.
     static async getStats(req: Request, res: Response, next: NextFunction) {
         try {
             const { from, to } = dayRange(req.query.day as string | undefined);

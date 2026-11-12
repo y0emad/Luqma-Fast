@@ -11,7 +11,6 @@ const FIELDS = {
 
 export type OtpKind = keyof typeof FIELDS;
 
-// A new code: returns the plain OTP (to email) and the fields to save (hashed code, expiry, attempts reset).
 export async function issueOtp(kind: OtpKind) {
     const otp = GlobalUtilis.generateOtp(6);
     const f = FIELDS[kind];
@@ -30,8 +29,6 @@ export function clearOtp(kind: OtpKind) {
     return { [f.token]: null, [f.time]: null, [f.attempts]: 0 };
 }
 
-// Throws unless `otp` is the user's current, unexpired code. A wrong code counts as a try;
-// after MAX_OTP_ATTEMPTS wrong tries the code is locked, even if the right one comes next.
 export async function assertOtp(user: any, kind: OtpKind, otp: string) {
     const f = FIELDS[kind];
     const hash: string | undefined = user?.[f.token];

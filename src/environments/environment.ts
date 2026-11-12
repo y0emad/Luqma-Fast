@@ -11,8 +11,6 @@ export interface Environment {
 
 const REQUIRED = ["MONGO_URI", "REDIS_URL", "JWT_SECRET", "JWT_REFRESH_SECRET"] as const;
 
-// Called once at startup: refuse to run with a missing or weak config,
-// instead of failing later on the first request that needs it.
 export function assertEnvironment() {
     const missing = REQUIRED.filter((key) => !process.env[key]);
     if (missing.length) {

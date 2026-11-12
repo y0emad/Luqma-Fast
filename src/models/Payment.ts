@@ -21,8 +21,6 @@ export interface IPayment {
     updated_at: Date;
 }
 
-// One payment attempt for an order. An order can have several (a failed card, then a retry),
-// but at most one ends up "paid".
 const PaymentSchema = new mongoose.Schema<IPayment>({
     order_id: { type: mongoose.Schema.Types.ObjectId, ref: "Orders", required: true, index: true },
     user_id: { type: mongoose.Schema.Types.ObjectId, ref: "users", required: true },
@@ -32,7 +30,6 @@ const PaymentSchema = new mongoose.Schema<IPayment>({
     currency: { type: String, required: true },
     intention_id: { type: String },
     paymob_order_id: { type: Number, index: true },
-    // Only needed to build the checkout link; never sent back in API responses.
     client_secret: { type: String, select: false },
     transaction_id: { type: Number },
     failure_reason: { type: String },

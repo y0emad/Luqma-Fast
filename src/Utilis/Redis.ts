@@ -3,9 +3,6 @@ import { createClient } from 'redis';
 let client: ReturnType<typeof createClient> | undefined;
 let everConnected = false;
 
-// Created on first use, so the env (REDIS_URL) is already loaded.
-// The first connection gives up after a few tries (so a missing Redis fails startup and
-// tests with a clear error instead of hanging); once connected, it keeps reconnecting.
 function getClient() {
     if (!client) {
         client = createClient({

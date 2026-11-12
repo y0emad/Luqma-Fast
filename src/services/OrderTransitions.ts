@@ -5,10 +5,6 @@ import { STATUS_LABELS, type Actor, type OrderStatus } from "../Utilis/OrderStat
 
 type Options = { extra?: Record<string, any>; notify?: boolean };
 
-// Moves an order to `to`, but only if it's still in one of `from` when the write happens.
-// Two people acting at the same moment (the user cancels while the restaurant accepts, or
-// the payment arrives while the order expires) can't both win: the second write finds the
-// status already changed and gets a 409.
 export async function transition(filter: Record<string, any>, from: OrderStatus[], to: OrderStatus, by: Actor, { extra = {}, notify = true }: Options = {}) {
     const updated = await Order.findOneAndUpdate(
         { ...filter, status: { $in: from } },

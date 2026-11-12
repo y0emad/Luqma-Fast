@@ -10,7 +10,6 @@ export const PAYMENT_WINDOW_MS = 30 * 60 * 1000;
 
 const toCents = (n: number) => Math.round(n * 100);
 
-// Egyptian mobile numbers, stored as +201XXXXXXXXX (the format Paymob expects).
 export function normalizePhone(phone: string) {
     const digits = phone.replace(/[\s-]/g, "");
     if (/^\+201[0125]\d{8}$/.test(digits)) return digits;
@@ -23,9 +22,6 @@ function publicUrl() {
     return (process.env.PUBLIC_URL || `http://localhost:${process.env.PORT || 3000}`).replace(/\/$/, "");
 }
 
-// Creates a payment attempt and a Paymob intention for an order, and returns the link
-// where the customer pays. The amount is built from the order's own items (already priced
-// on the server), item by item, so Paymob's "items must add up to the amount" check holds.
 export async function startPayment(order: any, user: { _id?: unknown; aud?: string; name: string; email: string }, phone: string) {
     const items = order.items.map((i: any) => ({ name: String(i.name).slice(0, 50), amount: toCents(i.price), quantity: i.quantity }));
     if (order.delivery_charge > 0) items.push({ name: "Delivery", amount: toCents(order.delivery_charge), quantity: 1 });
@@ -56,7 +52,6 @@ export async function startPayment(order: any, user: { _id?: unknown; aud?: stri
     }
 }
 
-// What we need from a Paymob transaction, from either the webhook body or the redirect query.
 export type Transaction = {
     transactionId: number;
     paymobOrderId?: number;
@@ -118,23 +113,18 @@ export async function refundPayment(payment: any) {
         await Order.updateOne({ _id: payment.order_id }, { refunded: true });
         return { ...payment.toObject(), status: "refunded" };
     } catch (err) {
-        // The cancellation still stands; the refund is retried by hand from the Paymob dashboard.
         console.error(`Refund failed for payment ${payment._id}:`, (err as Error).message);
         await Payment.updateOne({ _id: payment._id }, { status: "refund_failed", failure_reason: (err as Error).message });
         return { ...payment.toObject(), status: "refund_failed" };
     }
 }
 
-// After an order is cancelled: refund it if it was paid, and close any unfinished attempts.
 export async function settleCancelledOrder(orderId: any) {
     await Payment.updateMany({ order_id: orderId, status: "pending" }, { status: "expired" });
     const paid = await Payment.findOne({ order_id: orderId, status: "paid" });
     if (paid) await refundPayment(paid);
 }
 
-// Applies a transaction to our data. Safe to call any number of times for the same
-// transaction (Paymob retries webhooks, and the redirect may arrive too): only the first
-// "paid" write wins, everything after it is a no-op.
 export async function processTransaction(t: Transaction) {
     const payment = await findPayment(t);
     if (!payment) return { handled: false, reason: "unknown payment" };
@@ -178,8 +168,6 @@ export async function processTransaction(t: Transaction) {
         });
         return { handled: true, orderId: String(payment.order_id), status: "paid" };
     } catch (err) {
-        // Paid, but the order was cancelled or expired meanwhile (or another attempt already
-        // paid it): give the money back instead of keeping it for an order nobody will cook.
         if (err instanceof AppError && err.statusCode === 409) {
             const refunded = await refundPayment(paid);
             return { handled: true, orderId: String(payment.order_id), status: refunded.status };
@@ -188,8 +176,6 @@ export async function processTransaction(t: Transaction) {
     }
 }
 
-// Card orders that weren't paid within the window are cancelled, so they don't sit
-// around forever. Runs on a timer from index.ts; tests call it directly.
 export async function expireUnpaidOrders(now = new Date()) {
     const cutoff = new Date(now.getTime() - PAYMENT_WINDOW_MS);
     const stale = await Order.find({ status: "awaiting_payment", created_at: { $lt: cutoff } }, { _id: 1 });

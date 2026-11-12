@@ -1,8 +1,6 @@
 import * as nodemailer from 'nodemailer';
 import { AppError } from './AppError';
 
-// EMAIL_PROVIDER=smtp  → nodemailer (Gmail / Ethereal while developing)
-// EMAIL_PROVIDER=brevo → Brevo HTTP API (production: cloud hosts often block SMTP ports, HTTPS always works)
 
 type Mail = { to: string; subject: string; html: string };
 
@@ -42,11 +40,9 @@ export async function sendMail(mail: Mail) {
     return sendWithSmtp(mail);
 }
 
-// User-typed text (names, item names) must not be able to inject HTML into our emails.
 export const escapeHtml = (s: string) =>
     String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-// ---------- Layout (inline styles: email clients ignore <style>) ----------
 
 const ORANGE = '#FC8019';
 const DARK = '#282C3F';
@@ -77,7 +73,6 @@ const otpBox = (otp: string) => `
   <span style="display:inline-block;padding:14px 28px;border-radius:10px;background:#FFF5EE;border:1px dashed ${ORANGE};font-size:32px;font-weight:700;letter-spacing:8px;color:${DARK};">${otp}</span>
 </div>`;
 
-// ---------- OTP emails: the user can't continue without the code, so a failure fails the request ----------
 
 async function sendOtpMail(mail: Mail) {
     try {
@@ -106,7 +101,6 @@ export function sendResetPasswordEmail(to: string, otp: string) {
     });
 }
 
-// ---------- Order emails: a bonus, the order stands even if the email fails ----------
 
 type OrderEmail = {
     userName: string;

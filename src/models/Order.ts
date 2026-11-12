@@ -41,7 +41,6 @@ const OrderSchema = new mongoose.Schema<IOrder>({
         enum: ORDER_STATUSES,
         default: "pending"
     },
-    // Every status change: when, and who made it.
     status_history: [{
         _id: false,
         status: { type: String, enum: ORDER_STATUSES, required: true },
@@ -54,7 +53,6 @@ const OrderSchema = new mongoose.Schema<IOrder>({
     phone: {
         type: String
     },
-    // A paid card order that was cancelled and refunded through the payment provider.
     refunded: {
         type: Boolean,
         default: false

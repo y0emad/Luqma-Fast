@@ -4,7 +4,6 @@ import { GlobalUtilis } from "../Utilis/GlobalUtilis";
 import { DashboardControllers } from "../controllers/DashboardControllers";
 import { DashboardValidator } from "../validators/DashboardValidator";
 
-// /api/my-restaurant: the logged-in restaurant account manages its own restaurant.
 class DashboardRouter {
     public router: Router;
     constructor() {

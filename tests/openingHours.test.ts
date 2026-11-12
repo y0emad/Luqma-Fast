@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { dayRange, isOpenAt } from "../src/Utilis/OpeningHours";
 
-// Cairo is UTC+2 in January, so 10:00Z is 12:00 there.
 const cairo = (hhmm: string, day = "2026-01-15") => {
   const [h, m] = hhmm.split(":").map(Number);
   return new Date(Date.UTC(2026, 0, Number(day.slice(8)), h - 2, m));
@@ -35,7 +34,6 @@ describe("isOpenAt", () => {
   });
 
   it("follows Cairo's summer time (UTC+3)", () => {
-    // 2026-07-15 08:30Z is 11:30 in Cairo (summer), but 10:30 in UTC+2.
     const summer = new Date(Date.UTC(2026, 6, 15, 8, 30));
     expect(isOpenAt({ opening_time: "11:00", closing_time: "12:00" }, summer)).toBe(true);
   });

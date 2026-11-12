@@ -26,7 +26,6 @@ export async function resetDb() {
 
 type UserType = "user" | "admin" | "restaurant";
 
-// A verified user created straight in the DB (skips signup + OTP).
 export async function createUser(type: UserType = "user", overrides: Record<string, unknown> = {}) {
   return User.create({
     name: type === "admin" ? "Admin" : "Test User",
@@ -43,7 +42,6 @@ export const tokenFor = (u: any) =>
 
 export const auth = (u: any) => ({ Authorization: `Bearer ${tokenFor(u)}` });
 
-// Cairo, so the geo tests have real coordinates: [lng, lat].
 export const CAIRO = { lng: 31.2357, lat: 30.0444 };
 
 export async function createCity() {
@@ -72,7 +70,6 @@ export async function ownerOf(restaurant: any) {
   return (await User.findById(restaurant.user_id))!;
 }
 
-// A restaurant with its owner account and one item, plus a customer with a pending order.
 export async function pendingOrder(itemOverrides: Record<string, unknown> = {}, orderBody: Record<string, unknown> = {}) {
   const customer = await createUser();
   const restaurant = await createRestaurant();
@@ -99,7 +96,6 @@ export async function createItem(restaurant: any, overrides: Record<string, unkn
   });
 }
 
-// The last OTP the (mocked) mailer was asked to send.
 export function lastOtp(kind: "verify" | "reset") {
   const fn = (kind === "verify" ? mailer.sendVerifyEmail : mailer.sendResetPasswordEmail) as unknown as ReturnType<typeof vi.fn>;
   const calls = fn.mock.calls;

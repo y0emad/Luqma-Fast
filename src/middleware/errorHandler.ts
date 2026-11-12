@@ -16,18 +16,15 @@ export function errorHandler(err: any, _req: Request, res: Response, _next: Next
         return send(err.statusCode, err.message);
     }
 
-    // Legacy style: next({ message, statusCode }) from older code paths.
     if (err && typeof err.statusCode === "number" && err.statusCode < 500) {
         return send(err.statusCode, err.message);
     }
 
-    // Mongo duplicate key (unique index), e.g. an email that is already used.
     if (err?.code === 11000) {
         const field = Object.keys(err.keyPattern ?? err.keyValue ?? {})[0];
         return send(409, DUPLICATE_MESSAGES[field] ?? "This record already exists");
     }
 
-    // A malformed ObjectId or a value Mongoose can't cast.
     if (err?.name === "CastError") {
         return send(400, `Invalid value for ${err.path}`);
     }
@@ -49,7 +46,6 @@ export function errorHandler(err: any, _req: Request, res: Response, _next: Next
         return send(400, err.code === "LIMIT_FILE_SIZE" ? "File is too large (max 5MB)" : err.message);
     }
 
-    // Anything else: log the real cause, answer with a generic message.
     console.error(err);
     return send(500, "Something went wrong, please try again");
 }

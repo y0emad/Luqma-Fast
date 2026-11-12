@@ -19,7 +19,6 @@ describe("order lifecycle", () => {
     const saved = await Order.findById(order._id);
     expect(saved!.status_history.map((h) => h.status)).toEqual(["pending", "accepted", "preparing", "on_the_way", "delivered"]);
     expect(saved!.status_history.slice(1).every((h) => h.by === "restaurant")).toBe(true);
-    // Cash is paid at the door.
     expect(saved!.payment_status).toBe(true);
     expect(mailer.sendOrderStatusEmail).toHaveBeenCalledTimes(4);
   });
@@ -120,12 +119,12 @@ describe("opening hours", () => {
       restaurant_id: restaurant._id, address: "Home", payment_method: "cash", items: [{ item_id: item._id, quantity: 1 }],
     });
 
-    vi.setSystemTime(new Date("2026-01-15T05:00:00Z")); // 07:00 in Cairo
+    vi.setSystemTime(new Date("2026-01-15T05:00:00Z"));
     const early = await place();
     expect(early.status).toBe(422);
     expect(early.body.message).toContain("closed");
 
-    vi.setSystemTime(new Date("2026-01-15T10:00:00Z")); // 12:00 in Cairo
+    vi.setSystemTime(new Date("2026-01-15T10:00:00Z"));
     expect((await place()).status).toBe(201);
   });
 });

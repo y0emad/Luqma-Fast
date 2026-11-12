@@ -7,7 +7,6 @@ import { api, auth, createItem, createRestaurant, createUser, ownerOf, pendingOr
 
 beforeEach(resetDb);
 
-// The smallest valid PNG (1x1), for upload tests.
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
 
 describe("/my-restaurant access", () => {
@@ -38,7 +37,7 @@ describe("/my-restaurant access", () => {
 describe("orders", () => {
   it("lists only this restaurant's orders, filtered by status", async () => {
     const { owner, order } = await pendingOrder();
-    await pendingOrder(); // another restaurant's order
+    await pendingOrder();
     await api().patch(`/api/orders/${order._id}/status`).set(auth(owner)).send({ status: "accepted" });
 
     const all = await api().get("/api/my-restaurant/orders").set(auth(owner));
@@ -130,15 +129,14 @@ describe("GET /my-restaurant/stats", () => {
       for (const status of steps) await api().patch(`/api/orders/${id}/status`).set(auth(owner)).send({ status });
     };
 
-    const a = await place([{ item_id: koshary._id, quantity: 2 }]);               // 100 + 10
-    const b = await place([{ item_id: koshary._id, quantity: 1 }, { item_id: juice._id, quantity: 3 }]); // 110 + 10
-    const c = await place([{ item_id: juice._id, quantity: 5 }]);                 // cancelled
-    await place([{ item_id: koshary._id, quantity: 1 }]);                          // stays pending
+    const a = await place([{ item_id: koshary._id, quantity: 2 }]);
+    const b = await place([{ item_id: koshary._id, quantity: 1 }, { item_id: juice._id, quantity: 3 }]);
+    const c = await place([{ item_id: juice._id, quantity: 5 }]);
+    await place([{ item_id: koshary._id, quantity: 1 }]);
     await move(a.body.data._id, ["accepted", "preparing", "on_the_way", "delivered"]);
     await move(b.body.data._id, ["accepted", "preparing", "on_the_way", "delivered"]);
     await move(c.body.data._id, ["cancelled"]);
 
-    // An order from yesterday doesn't count.
     await Order.collection.updateOne({ _id: (await Order.findOne({ status: "pending" }))!._id }, { $set: { created_at: new Date(Date.now() - 2 * 86400000) } });
 
     const res = await api().get("/api/my-restaurant/stats").set(auth(owner));

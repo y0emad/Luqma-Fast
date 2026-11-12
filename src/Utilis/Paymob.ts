@@ -1,10 +1,6 @@
 import { createHmac, timingSafeEqual } from "crypto";
 import { AppError } from "./AppError";
 
-// Paymob (Egypt) with the Intention API + Unified Checkout:
-// 1. the server creates an "intention" (amount, items, customer) and gets a client_secret,
-// 2. the customer pays on Paymob's hosted page: /unifiedcheckout/?publicKey=…&clientSecret=…,
-// 3. Paymob POSTs the transaction to our webhook, signed with an HMAC we must check.
 
 export function paymobConfig() {
     return {
@@ -91,10 +87,7 @@ export async function refundTransaction(transactionId: number, amountCents: numb
     return paymobFetch("/api/acceptance/void_refund/refund", { transaction_id: transactionId, amount_cents: amountCents });
 }
 
-// ---------- HMAC ----------
 
-// Paymob's documented order. The POST (webhook) body nests them under `obj`
-// (order.id, source_data.pan, …); the GET redirect flattens them (`id`, `order`, `source_data.pan`).
 const HMAC_FIELDS = [
     "amount_cents", "created_at", "currency", "error_occured", "has_parent_transaction", "id",
     "integration_id", "is_3d_secure", "is_auth", "is_capture", "is_refunded", "is_standalone_payment",
@@ -111,12 +104,10 @@ export function signTransaction(values: unknown[], secret = paymobConfig().hmacS
     return createHmac("sha512", secret).update(hmacString(values)).digest("hex");
 }
 
-// The webhook's `obj` (nested keys).
 export function transactionHmacValues(obj: any) {
     return HMAC_FIELDS.map((f) => getPath(obj, f));
 }
 
-// The redirect's query string (flat keys; the order id is sent as `order`).
 export function redirectHmacValues(query: Record<string, any>) {
     return HMAC_FIELDS.map((f) => (f === "order.id" ? query.order : query[f]));
 }

@@ -14,7 +14,6 @@ import { canRestaurantMove, ORDER_STATUSES, USER_CANCELLABLE, type Actor, type O
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
 export class OrderControllers {
-    // Prices come from the database, never from the client: the request only says which items and how many.
     static async createOrder(req: Request, res: Response, next: NextFunction) {
         try {
             const restaurant = req.restaurant;
@@ -70,7 +69,6 @@ export class OrderControllers {
                 status_history: [{ status: isCard ? 'awaiting_payment' : 'pending', by: 'user' }],
             });
 
-            // Card: the order waits for the payment; the restaurant only sees it once it's paid.
             if (isCard) {
                 try {
                     const payment = await startPayment(data, req.user!, phone!);
@@ -118,7 +116,6 @@ export class OrderControllers {
         }
     }
 
-    // The customer, the restaurant that received it, or an admin. Anyone else gets 404.
     static async getOrderById(req: Request, res: Response, next: NextFunction) {
         try {
             const order = await Order.findById(req.params.id)
@@ -150,7 +147,6 @@ export class OrderControllers {
         }
     }
 
-    // The restaurant moves its own orders one step at a time; an admin can move any order.
     static async updateStatus(req: Request, res: Response, next: NextFunction) {
         try {
             const to = req.body.status as OrderStatus;
@@ -161,7 +157,6 @@ export class OrderControllers {
 
             const extra: Record<string, any> = {};
             if (to === 'cancelled') extra.cancel_reason = req.body.reason || 'Cancelled by the restaurant';
-            // Cash is collected at the door.
             if (to === 'delivered') {
                 const order = await Order.findOne(filter, { payment_method: 1 });
                 if (order?.payment_method === 'cash') extra.payment_status = true;
@@ -175,7 +170,6 @@ export class OrderControllers {
         }
     }
 
-    // A new checkout link for an unpaid card order (the first one failed, or was closed).
     static async payOrder(req: Request, res: Response, next: NextFunction) {
         try {
             if (!isPaymobConfigured()) throw new AppError(503, 'Online payment is not available right now');

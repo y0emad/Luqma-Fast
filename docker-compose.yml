@@ -1,5 +1,4 @@
 services:
-  # Your local MongoDB already uses 27017, so this one is published on 27018.
   mongo:
     image: mongo:7
     ports:
@@ -24,13 +23,10 @@ services:
       timeout: 5s
       retries: 10
 
-  # The API itself. For local development you usually run only redis (and mongo)
-  # with `docker compose up -d redis mongo` and start the API with `npm run dev`.
   api:
     build: .
     env_file: .env
     environment:
-      # Inside Docker the hosts are the service names, not localhost.
       MONGO_URI: mongodb://mongo:27017/LuqmaFast
       REDIS_URL: redis://redis:6379
       PORT: 3000

@@ -10,8 +10,6 @@ jobs:
     name: Typecheck & tests
     runs-on: ubuntu-latest
 
-    # Same Mongo and Redis as docker-compose.yml. The tests use their own
-    # database (luqma_test) and Redis db 1, see .env.test.
     services:
       mongo:
         image: mongo:7

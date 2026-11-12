@@ -5,7 +5,6 @@ import { signTransaction, transactionHmacValues, redirectHmacValues } from "../s
 import { expireUnpaidOrders, PAYMENT_WINDOW_MS } from "../src/services/PaymentService";
 import { api, auth, createItem, createRestaurant, createUser, mailer, ownerOf, resetDb } from "./helpers";
 
-// Paymob is never called for real: fetch is replaced, and every call is recorded.
 let paymobCalls: { url: string; body: any; headers: any }[] = [];
 let nextIntention = 1;
 let refundShouldFail = false;
@@ -43,7 +42,6 @@ async function cardOrder() {
   return { customer, restaurant, owner, item, res };
 }
 
-// A Paymob "transaction processed" webhook body, as Paymob sends it.
 function transaction(payment: any, overrides: Record<string, any> = {}) {
   return {
     id: 5550000 + Math.floor(Math.random() * 1000),
@@ -89,11 +87,9 @@ describe("card orders", () => {
       notification_url: "https://api.example.test/api/payments/paymob/webhook",
       redirection_url: "https://api.example.test/api/payments/paymob/return",
     });
-    // Paymob checks the items add up to the amount.
     expect(call.body.items.reduce((s: number, i: any) => s + i.amount * i.quantity, 0)).toBe(call.body.amount);
     expect(call.body.billing_data).toMatchObject({ first_name: "Sara", last_name: "Ali", phone_number: "+201012345678" });
 
-    // No receipt email yet: nothing is paid.
     expect(mailer.sendOrderConfirmationEmail).not.toHaveBeenCalled();
   });
 
@@ -154,7 +150,7 @@ describe("Paymob webhook", () => {
     expect((await webhook(obj, "not-hex")).status).toBe(401);
 
     const signed = signTransaction(transactionHmacValues({ ...obj, success: false }), "test-hmac-secret");
-    expect((await webhook(obj, signed)).status).toBe(401); // signed as failed, sent as success
+    expect((await webhook(obj, signed)).status).toBe(401);
 
     expect((await Order.findById(res.body.data._id))!.status).toBe("awaiting_payment");
   });

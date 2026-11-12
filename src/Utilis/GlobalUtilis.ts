@@ -39,7 +39,6 @@ export class GlobalUtilis {
         return otp;
     }
 
-    // Stored with forward slashes, so the path works as a URL on every OS.
     static filePath(file: Express.Multer.File): string {
         return file.path.replace(/\\/g, '/');
     }
@@ -54,7 +53,6 @@ export class GlobalUtilis {
         return { page, perPage, skip: (page - 1) * perPage };
     }
 
-    // The pagination block every list endpoint returns. An empty list is page 1 of 0, not a 404.
     static pagination(page: number, perPage: number, total: number) {
         const totalPages = Math.ceil(total / perPage);
         return {
@@ -129,7 +127,6 @@ export class GlobalUtilis {
         next(new AppError(403, 'Forbidden: Admins only'));
     }
 
-    // A restaurant account: loads the restaurant it owns into req.restaurant.
     static authRestaurant(req: Request, _res: Response, next: NextFunction) {
         if (req.user?.type !== 'restaurant') return next(new AppError(403, 'Forbidden: restaurant accounts only'));
         Restaurant.findOne({ user_id: req.user.aud }).then((restaurant) => {
@@ -144,7 +141,6 @@ export class GlobalUtilis {
         GlobalUtilis.authRestaurant(req, res, next);
     }
 
-    // For actions that need a confirmed email, e.g. after changing it in updateProfile.
     static requireVerified(req: Request, _res: Response, next: NextFunction) {
         User.findById(req.user!.aud, { verified: 1, status: 1 }).then((user) => {
             if (!user) return next(new AppError(401, 'User not found'));

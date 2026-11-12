@@ -1,7 +1,6 @@
 import { body, query } from "express-validator"
 import City from "../models/City";
 
-// Multipart forms send arrays/objects as strings: accept JSON or a comma-separated list.
 const parseJson = (value: unknown) => {
     if (typeof value !== 'string') return value;
     try { return JSON.parse(value); } catch { return value; }

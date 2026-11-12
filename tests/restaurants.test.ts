@@ -62,7 +62,6 @@ describe("GET /restaurants/getNearbyRestaurants", () => {
   it("finds restaurants inside the radius only", async () => {
     const user = await createUser();
     await createRestaurant({ name: "Near" });
-    // About 13 km away (Giza pyramids).
     await createRestaurant({ name: "Far", location: { type: "Point", coordinates: [31.1342, 29.9792] } });
 
     const q = `latitude=${CAIRO.lat}&longitude=${CAIRO.lng}`;

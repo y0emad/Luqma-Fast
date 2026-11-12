@@ -53,7 +53,6 @@ const usersSchema = new mongoose.Schema<IUser>({
         type: Boolean,
         default: false
     },
-    // OTPs are stored hashed, with a counter of wrong tries.
     verification_token: { type: String },
     verification_time: { type: Date },
     verification_attempts: { type: Number, default: 0 },

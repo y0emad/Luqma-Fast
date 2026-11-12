@@ -5,8 +5,6 @@ import { fromRedirect, fromWebhook, processTransaction } from "../services/Payme
 import Payment from "../models/Payment";
 
 export class PaymentControllers {
-    // Paymob's server-to-server callback. This is what marks an order paid: the customer's
-    // browser can't fake it, because the body must match the HMAC signed with our secret.
     static async paymobWebhook(req: Request, res: Response, next: NextFunction) {
         try {
             const body = req.body ?? {};
@@ -18,16 +16,12 @@ export class PaymentControllers {
                 return res.status(401).json({ message: "Invalid signature", status: 401 });
             }
             const result = await processTransaction(fromWebhook(body.obj));
-            // Always 200 once the signature is valid, so Paymob doesn't keep retrying.
             res.status(200).json({ received: true, ...result });
         } catch (error) {
             next(error);
         }
     }
 
-    // Where Paymob sends the customer's browser after paying. It's signed too, so it can apply
-    // the result (idempotently, the webhook may have done it already), then it sends the
-    // customer back to the frontend's order page.
     static async paymobReturn(req: Request, res: Response, next: NextFunction) {
         try {
             const frontend = getEnvironment().frontendUrls[0];

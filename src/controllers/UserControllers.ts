@@ -16,8 +16,6 @@ async function issueTokens(user: any) {
 
 export class UserControllers {
 
-    // The account is only kept if the verification email could be sent,
-    // so a failed email doesn't block signing up again with the same address.
     static async signup(req: Request, res: Response, next: NextFunction) {
         try {
             const { email, name, password } = req.body;
@@ -57,7 +55,6 @@ export class UserControllers {
         }
     }
 
-    // Same answer whether or not the email exists or is already verified.
     static async resendVerifyEmail(req: Request, res: Response, next: NextFunction) {
         try {
             const { email } = req.body;
@@ -103,7 +100,6 @@ export class UserControllers {
         }
     }
 
-    // Same answer for registered and unknown emails, so it can't be used to find accounts.
     static async sendOtpResetPass(req: Request, res: Response, next: NextFunction) {
         try {
             const { email } = req.body;
@@ -152,7 +148,6 @@ export class UserControllers {
         }
     }
 
-    // Changing the email needs the current password, and the new address must be verified again.
     static async updateProfile(req: Request, res: Response, next: NextFunction) {
         try {
             const { name, email, password } = req.body;

@@ -7,8 +7,6 @@ import Category from './models/Category';
 import Items from './models/Items';
 import { GlobalUtilis } from './Utilis/GlobalUtilis';
 
-// npm run db:seed          → the admin account (ADMIN_NAME / ADMIN_EMAIL / ADMIN_PASS in .env)
-// npm run db:seed -- --demo → plus a demo city, restaurant and menu, to try the API right away
 async function seed() {
     const { ADMIN_NAME, ADMIN_EMAIL, ADMIN_PASS, MONGO_URI } = process.env;
     if (!MONGO_URI || !ADMIN_EMAIL || !ADMIN_PASS || ADMIN_PASS.length < 8) {

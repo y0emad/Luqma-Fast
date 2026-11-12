@@ -17,12 +17,10 @@ import { Redis } from './Utilis/Redis';
 import { apiLimiter } from './middleware/rateLimit';
 import { errorHandler, notFound } from './middleware/errorHandler';
 
-// The Express app only (no listen, no DB connect), so tests can use it with Supertest.
 export function createApp() {
     const env = getEnvironment();
     const app = express();
 
-    // Behind a reverse proxy (Caddy) trust its X-Forwarded-For, so rate limits see the real visitor.
     if (env.trustProxy) app.set('trust proxy', 1);
 
     app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
@@ -38,7 +36,6 @@ export function createApp() {
 
     app.use('/src/uploads', express.static('src/uploads', { maxAge: '7d' }));
 
-    // Paymob calls these: no rate limit, no token (they are checked by their HMAC).
     app.use('/api/payments', PaymentRouter);
 
     const api = express.Router();
