@@ -1,13 +1,15 @@
-import * as mongoose from "mongoose";
+import mongoose from "mongoose";
 
 const ItemsSchema = new mongoose.Schema({
     restaurant_id: {
         type: mongoose.Schema.Types.ObjectId,
+        ref: "restaurant",
         required: true,
        
     },
     category_id: {
         type: mongoose.Schema.Types.ObjectId,
+        ref: "Category",
         required: true,
         
     },

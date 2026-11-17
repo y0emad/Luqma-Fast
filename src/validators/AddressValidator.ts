@@ -5,7 +5,7 @@ import Address from "../models/Address";
 export class AddressValidator {
     static createAddress() {
         return [
-            body('landmark', 'Landmark is required').isString(),
+            body('landmark', 'Landmark must be a string').optional().isString().isLength({ max: 200 }),
             body('lat', 'Latitude is required').isFloat(),
             body('lon', 'Longitude is required').isFloat(),
             body('house', 'House number is required').isString(),
@@ -29,13 +29,7 @@ export class AddressValidator {
 
     static deleteAddress() {
         return [
-            param('id', 'Address ID is required').isMongoId().custom(async (value, { req }) => {
-                const address = await Address.findById(value);
-                if (!address) {
-                    return Promise.reject('Address not found');
-                }
-                return true;
-            })
+            param('id', 'Address ID is required').isMongoId()
         ]
     }
 

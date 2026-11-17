@@ -1,7 +1,29 @@
-import * as mongoose from "mongoose";
+import mongoose from "mongoose";
+import { ACTORS, ORDER_STATUSES, type Actor, type OrderStatus } from "../Utilis/OrderStatus";
 
+export interface IOrder {
+    user_id: mongoose.Types.ObjectId;
+    restaurant_id: mongoose.Types.ObjectId;
+    instructions?: string;
+    status: OrderStatus;
+    status_history: { status: OrderStatus; at: Date; by: Actor }[];
+    phone?: string;
+    refunded: boolean;
+    cancel_reason?: string;
+    address: string;
+    order?: string;
+    items: { item_id: mongoose.Types.ObjectId; name: string; price: number; quantity: number }[];
+    total: number;
+    grand_total: number;
+    delivery_charge: number;
+    payment_status: boolean;
+    payment_method: 'cash' | 'card';
+    review?: { rating: number; comment?: string; created_at: Date };
+    created_at: Date;
+    updated_at: Date;
+}
 
-const OrderSchema = new mongoose.Schema({
+const OrderSchema = new mongoose.Schema<IOrder>({
     user_id: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "users",
@@ -14,20 +36,42 @@ const OrderSchema = new mongoose.Schema({
     },
     instructions: {
         type: String,
-
     },
     status: {
         type: String,
+        enum: ORDER_STATUSES,
         default: "pending"
+    },
+    status_history: [{
+        _id: false,
+        status: { type: String, enum: ORDER_STATUSES, required: true },
+        at: { type: Date, default: Date.now },
+        by: { type: String, enum: ACTORS, required: true },
+    }],
+    cancel_reason: {
+        type: String
+    },
+    phone: {
+        type: String
+    },
+    refunded: {
+        type: Boolean,
+        default: false
     },
     address: {
         type: String,
         required: true
     },
     order: {
-        type: String,
-        required: true
+        type: String
     },
+    items: [{
+        _id: false,
+        item_id: { type: mongoose.Schema.Types.ObjectId, ref: "Items", required: true },
+        name: { type: String, required: true },
+        price: { type: Number, required: true },
+        quantity: { type: Number, required: true }
+    }],
     total: {
         type: Number,
         required: true
@@ -46,18 +90,23 @@ const OrderSchema = new mongoose.Schema({
     },
     payment_method: {
         type: String,
+        enum: ["cash", "card"],
         required: true
     },
-
-    created_at: {
-        type: Date,
-        default: Date.now
+    review: {
+        type: new mongoose.Schema({
+            rating: { type: Number, min: 1, max: 5, required: true },
+            comment: { type: String, maxlength: 500 },
+            created_at: { type: Date, default: Date.now },
+        }, { _id: false }),
+        default: undefined,
     },
-    updated_at: {
-        type: Date,
-        default: Date.now
-    }
+}, {
+    timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 });
 
-export default mongoose.model("Orders", OrderSchema);
+OrderSchema.index({ restaurant_id: 1, created_at: -1 });
+OrderSchema.index({ user_id: 1, created_at: -1 });
+OrderSchema.index({ restaurant_id: 1, 'review.created_at': -1 }, { partialFilterExpression: { 'review.rating': { $exists: true } } });
 
+export default mongoose.model<IOrder>("Orders", OrderSchema);

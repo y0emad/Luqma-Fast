@@ -1,3 +1,11 @@
 node_modules
-.env
+dist
+coverage
 
+.env
+.env.*
+!.env.example
+!.env.test
+
+src/uploads/*/*
+!src/uploads/*/.gitkeep

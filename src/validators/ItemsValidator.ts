@@ -6,18 +6,18 @@ import Category from "../models/Category";
 export class ItemsValidator {
     static CreateItems() {
         return [
-            body('restaurant_id', 'Restaurant ID is required').custom((value) => {
-                const restaurant = Restaurant.findById(value);
+            body('restaurant_id', 'Restaurant ID is required').isMongoId().custom(async (value) => {
+                const restaurant = await Restaurant.findById(value);
                 if (!restaurant) {
                     return Promise.reject('Restaurant not found');
                 }
                 return true;
 
             }),
-            body('category_id', 'Category ID is required').custom((value) => {
-                const category = Category.findById(value);
+            body('category_id', 'Category ID is required').isMongoId().custom(async (value, { req }) => {
+                const category = await Category.findOne({ _id: value, restaurant_id: req.body.restaurant_id });
                 if (!category) {
-                    return Promise.reject('Category not found');
+                    return Promise.reject('Category not found for this restaurant');
                 }
                 return true;
             }),
@@ -31,7 +31,7 @@ export class ItemsValidator {
                 }
                 return true;
             }),
-            body('price', 'Price must be a positive number').isInt({ gt: 0 }),
+            body('price', 'Price must be a positive number').isFloat({ gt: 0 }),
 
 
 
@@ -42,7 +42,7 @@ export class ItemsValidator {
 
     static getMenu() {
         return [
-            param('restaurantId', 'Restaurant ID is required')
+            param('restaurantId', 'Restaurant ID is invalid').isMongoId().bail()
                 .custom(async (value, { req }) => {
                     const restaurant = await Restaurant.findById(value);
                     if (!restaurant) {

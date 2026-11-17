@@ -1,11 +1,11 @@
-import * as mongoose from "mongoose";
+import mongoose from "mongoose";
 
 
 
 const AddressSchema = new mongoose.Schema({
     user_id: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        ref: 'users',
         required: true,
     },
     title: {
@@ -19,7 +19,7 @@ const AddressSchema = new mongoose.Schema({
 
     landmark: {
         type: String,
-        required: true
+        default: ''
     },
     lat: {
         type: Number,

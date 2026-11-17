@@ -1,248 +1,211 @@
-
-import { decode } from "node:punycode";
+import type { NextFunction, Request, Response } from "express";
 import User from "../models/User";
 import { GlobalUtilis } from "../Utilis/GlobalUtilis";
-import { Jwt } from "../Utilis/Jwt";
-import { NodeMailer } from "../Utilis/NodeMailer";
-import { Redis } from "../Utilis/Redis";
+import { Jwt, type TokenPayload } from "../Utilis/Jwt";
+import { sendResetPasswordEmail, sendVerifyEmail } from "../Utilis/NodeMailer";
+import { AppError } from "../Utilis/AppError";
+import { assertOtp, clearOtp, issueOtp } from "../Utilis/Otp";
+
+const payloadOf = (user: any): TokenPayload =>
+    ({ aud: String(user._id), email: user.email, name: user.name, type: user.type });
+
+async function issueTokens(user: any) {
+    const payload = payloadOf(user);
+    return { token: Jwt.jwtSign(payload), refreshToken: await Jwt.jwtRefreshSign(payload) };
+}
 
 export class UserControllers {
 
-    static async signup(req: any, res: any, next: any) {
-        const { email, name, type, status } = req.body;
-        const hashPassword = await GlobalUtilis.hashPassword(req.body.password);
-        const otp = GlobalUtilis.generateOtp(6);
+    static async signup(req: Request, res: Response, next: NextFunction) {
         try {
-            const user = await new User({
-                name: name,
-                email: email,
-                verification_token: otp,
-                verification_time: new Date(Date.now() + GlobalUtilis.timeOfOtpValidity),
-                password: hashPassword,
-                type: type,
-                status: status
-            }).save();
-            const payload = { aud: user._id, email: user.email, name: user.name, type: user.type };
-            const token = Jwt.jwtSign(payload);
-            const refreshToken = await Jwt.jwtRefreshSign(payload);
-            res.status(201).json({ token, refreshToken, user });
-            NodeMailer.sendEmail(email, `Verify your email`, `Your OTP for email verification is ${otp}. It is valid for 5 minutes.`).catch((e) => {
-                console.error('Error sending email:', e);
+            const { email, name, password } = req.body;
+            if (await User.exists({ email })) {
+                throw new AppError(409, 'This email is already registered');
+            }
+            const { otp, update } = await issueOtp('verify');
+            const user = await User.create({
+                name,
+                email,
+                password: await GlobalUtilis.hashPassword(password),
+                type: 'user',
+                ...update,
             });
-        } catch (e: any) {
-            next(e);
-        }
-
-    }
-
-
-    static async verifyEmail(req: any, res: any, next: any) {
-        const otp = req.body.otp;
-        const email = req.user.email;
-        try {
-            const user = await User.findOneAndUpdate({ email: email, verification_token: otp, verification_time: { $gt: new Date() } }, { verified: true, verification_token: null, verification_time: null, updated_at: new Date() }, { new: true });
-            if (!user) {
-                return next({ message: 'Invalid OTP or OTP expired', statusCode: 400 });
+            try {
+                await sendVerifyEmail(email, otp);
+            } catch (e) {
+                await User.deleteOne({ _id: user._id });
+                throw e;
             }
-            res.status(200).send({ message: 'Email verified successfully' });
+            res.status(201).json({ message: 'Account created, check your email for the verification code', status: 201, user });
         } catch (e) {
             next(e);
         }
     }
 
-    static async resendVerifyEmail(req: any, res: any, next: any) {
-        const email = req.user.email;
-
-        const otp = GlobalUtilis.generateOtp(6);
+    static async verifyEmail(req: Request, res: Response, next: NextFunction) {
         try {
-            const user = await User.findOneAndUpdate({ email: email, verified: false }, { verification_token: otp, verification_time: new Date(Date.now() + GlobalUtilis.timeOfOtpValidity), updated_at: new Date() }, { new: true });
-
-            if (!user) {
-                return next({ message: 'User not found or already verified', statusCode: 404 });
-            }
-            res.status(200).send({ message: 'OTP resent successfully' });
-            NodeMailer.sendEmail(email, `Verify your email`, `Your OTP for email verification is ${otp}. It is valid for 5 minutes.`).catch((e) => {
-                console.error('Error sending email:', e);
-            });
+            const { email, otp } = req.body;
+            const user = await User.findOne({ email, verified: false });
+            await assertOtp(user, 'verify', otp);
+            await user!.updateOne({ verified: true, ...clearOtp('verify') });
+            const tokens = await issueTokens(user);
+            res.status(200).json({ message: 'Email verified successfully', status: 200, ...tokens, user: { ...user!.toJSON(), verified: true } });
         } catch (e) {
             next(e);
         }
     }
 
-    static async login(req: any, res: any, next: any) {
-        const { email, password } = req.query;
+    static async resendVerifyEmail(req: Request, res: Response, next: NextFunction) {
         try {
-            const user = await User.findOne({ email: email });
-            if (!user) {
-                return next({ message: 'User not found', statusCode: 404 });
+            const { email } = req.body;
+            const user = await User.findOne({ email, verified: false });
+            if (user) {
+                const { otp, update } = await issueOtp('verify');
+                await user.updateOne(update);
+                await sendVerifyEmail(email, otp);
             }
-            if (user.type !== "admin" && user.type !== "user") {
-                return res.status(401).json("you are not Authorized")
-
-            }
-            const isPasswordValid = await GlobalUtilis.comparePassword(password, user.password);
-            if (!isPasswordValid) {
-                return next({ message: 'Invalid password', statusCode: 400 });
-            }
-            const payload = { aud: user._id, email: user.email, name: user.name, type: user.type };
-            const token = Jwt.jwtSign(payload);
-            const refreshToken = await Jwt.jwtRefreshSign(payload);
-            res.status(200).json({ token, refreshToken, user });
+            res.status(200).json({ message: 'If this account needs verification, a new code was sent', status: 200 });
         } catch (e) {
             next(e);
         }
     }
 
-    static async sendOtpResetPass(req: any, res: any, next: any) {
-        const email = req.query.email;
-        const otp = GlobalUtilis.generateOtp(6);
+    static async login(req: Request, res: Response, next: NextFunction) {
         try {
-            const user = await User.findOneAndUpdate({ email: email }, { verification_resetPass_token: otp, verification_resetPass_time: new Date(Date.now() + GlobalUtilis.timeOfOtpValidity), updated_at: new Date() });
-            if (!user) {
-                return next({ message: 'User not found', statusCode: 404 });
+            const { email, password } = req.body;
+            const user = await User.findOne({ email });
+            const isPasswordValid = user ? await GlobalUtilis.comparePassword(password, user.password) : false;
+            if (!user || !isPasswordValid) {
+                throw new AppError(401, 'Invalid email or password');
             }
-            res.status(200).send({ message: 'OTP sent successfully' });
-            NodeMailer.sendEmail(email, `Reset your password`, `Your OTP for resetting password is ${otp}. It is valid for 5 minutes.`).catch((e) => {
-                console.error('Error sending email:', e);
-            });
+            if (!user.verified) {
+                throw new AppError(403, 'Please verify your email first');
+            }
+            if (user.status !== 'active') {
+                throw new AppError(403, 'This account is disabled');
+            }
+            res.status(200).json({ ...(await issueTokens(user)), user });
         } catch (e) {
             next(e);
         }
     }
 
-    static async checkOtpResetPass(req: any, res: any, next: any) {
-        const { email, otp } = req.query;
+    static async me(req: Request, res: Response, next: NextFunction) {
         try {
-            const user = await User.findOne({ email: email, verification_resetPass_token: otp, verification_resetPass_time: { $gt: new Date() } });
-            if (!user) {
-                return next({ message: 'Invalid OTP or OTP expired', statusCode: 400 });
-            }
-            res.status(200).send({ message: 'success' });
+            const user = await User.findById(req.user!.aud);
+            if (!user) throw new AppError(404, 'User not found');
+            res.status(200).json({ status: 200, user });
         } catch (e) {
             next(e);
         }
     }
 
-    static async resetPassword(req: any, res: any, next: any) {
-        const { email, otp, newPassword } = req.body;
-
+    static async sendOtpResetPass(req: Request, res: Response, next: NextFunction) {
         try {
-            const hashPassword = await GlobalUtilis.hashPassword(newPassword);
-
-            const user = await User.findOneAndUpdate({
-                email: email,
-                verification_resetPass_token: otp, verification_resetPass_time: { $gt: new Date() }
-            }, { password: hashPassword, updated_at: new Date(), verification_resetPass_time: null, verification_resetPass_token: null }, { new: true });
-            if (!user) {
-                return next({ message: 'Invalid OTP or OTP expired', statusCode: 400 });
+            const { email } = req.body;
+            const user = await User.findOne({ email });
+            if (user) {
+                const { otp, update } = await issueOtp('reset');
+                await user.updateOne(update);
+                await sendResetPasswordEmail(email, otp);
             }
-            res.status(200).send({ message: 'Password reset successfully' });
+            res.status(200).json({ message: 'If this email is registered, a reset code was sent', status: 200 });
         } catch (e) {
             next(e);
         }
     }
 
-    static async updateName(req: any, res: any, next: any) {
-        const id = req.user.aud;
-        const { name } = req.body;
+    static async checkOtpResetPass(req: Request, res: Response, next: NextFunction) {
         try {
-            const user = await User.findByIdAndUpdate(id, { name: name, updated_at: new Date() }, { new: true });
-            if (!user) {
-                return next({ message: 'User not found', statusCode: 404 });
-            }
-            res.status(200).json({ message: 'Name updated successfully', user });
+            const { email, otp } = req.body;
+            await assertOtp(await User.findOne({ email }), 'reset', otp);
+            res.status(200).json({ message: 'success', status: 200 });
         } catch (e) {
             next(e);
         }
     }
 
-    static async updateProfile(req: any, res: any, next: any) {
-        const id = req.user.aud;
-        const { name, email, password } = req.body;
-
+    static async resetPassword(req: Request, res: Response, next: NextFunction) {
         try {
-            const isPasswordValid = await GlobalUtilis.comparePassword(password, req.oldUser.password);
-            if (!isPasswordValid) {
-                return next({ message: 'Invalid password', statusCode: 400 });
-            }
-            const otp = GlobalUtilis.generateOtp(6);
-            await User.findOne({ email: email }).then((user) => {
-                if (user) {
-                    throw new Error('Email already used by another user');
-                }
-            })
-            const user = await User.findByIdAndUpdate(id, { name: name, email: email, updated_at: new Date(), verified: false, verification_token: otp, verification_time: new Date(Date.now() + GlobalUtilis.timeOfOtpValidity) }, { new: true });
-            if (!user) {
-                return next({ message: 'User not found', statusCode: 404 });
-            }
-            const payload = { aud: user._id, email: user.email, name: user.name, type: user.type };
-            const token = Jwt.jwtSign(payload);
-
-            res.status(200).json({ message: 'Profile updated successfully', token, user });
-            NodeMailer.sendEmail(email, `Verify your email`, `Your email has been updated. Please verify your new email address by using the OTP sent to you. Your OTP is ${user.verification_token}. It is valid for 5 minutes.`).catch((e) => {
-                console.error('Error sending email:', e);
-            });
-        } catch (e) {
-            next(e);
-        }
-
-
-
-    }
-
-    static async newToken(req: any, res: any, next: any) {
-
-        try {
-            const decoded: any = req.user
-
-            const payload = { aud: decoded.aud, email: decoded.email, name: decoded.name, type: decoded.type };
-            const token = Jwt.jwtSign(payload);
-            const newRefreshToken = await Jwt.jwtRefreshSign(payload);
-            res.status(200).json({ token, refreshToken: newRefreshToken });
-        } catch (e) {
-            next(e);
-        }
-    }
-    static async logout(req: any, res: any, next: any) {
-
-        try {
-            const decoded: any = req.user
-            const userId = JSON.stringify(decoded.aud);
-            await Redis.del(userId);
-            res.status(200).json({ message: 'Logged out successfully' });
+            const { email, otp, newPassword } = req.body;
+            const user = await User.findOne({ email });
+            await assertOtp(user, 'reset', otp);
+            await user!.updateOne({ password: await GlobalUtilis.hashPassword(newPassword), ...clearOtp('reset') });
+            await Jwt.revokeRefresh(String(user!._id));
+            res.status(200).json({ message: 'Password reset successfully', status: 200 });
         } catch (e) {
             next(e);
         }
     }
 
-    // add function to ubdatephoto  
-        
-    static async updatePhoto(req: any, res: any, next: any) {
-        if (!req.file) {
-            return res.status(400).json({ message: "No file uploaded" })
-        }
-
-        const photo = req.file.path
-        const userId = req.user.aud
-
+    static async updateName(req: Request, res: Response, next: NextFunction) {
         try {
-            const user = await User.findByIdAndUpdate(
-                userId,
-                { photo: photo },
-                { new: true }
-            )
-
-
-            if (!user) {
-                return res.status(404).json({ message: "User not found" })
-            }
-
-            res.json(user)
+            const user = await User.findByIdAndUpdate(req.user!.aud, { name: req.body.name }, { new: true });
+            if (!user) throw new AppError(404, 'User not found');
+            res.status(200).json({ message: 'Name updated successfully', status: 200, user });
         } catch (e) {
+            next(e);
+        }
+    }
 
-            next(e)
+    static async updateProfile(req: Request, res: Response, next: NextFunction) {
+        try {
+            const { name, email, password } = req.body;
+            const current = await User.findById(req.user!.aud);
+            if (!current) throw new AppError(404, 'User not found');
+            if (!(await GlobalUtilis.comparePassword(password, current.password))) {
+                throw new AppError(400, 'Invalid password');
+            }
+            if (email === current.email) {
+                const user = await User.findByIdAndUpdate(current._id, { name }, { new: true });
+                return res.status(200).json({ message: 'Profile updated successfully', status: 200, user });
+            }
+            if (await User.exists({ email })) {
+                throw new AppError(409, 'This email is already registered');
+            }
+            const { otp, update } = await issueOtp('verify');
+            await sendVerifyEmail(email, otp);
+            const user = await User.findByIdAndUpdate(current._id, { name, email, verified: false, ...update }, { new: true });
+            await Jwt.revokeRefresh(String(current._id));
+            res.status(200).json({ message: 'Profile updated, verify your new email to log in again', status: 200, user });
+        } catch (e) {
+            next(e);
+        }
+    }
+
+    static async newToken(req: Request, res: Response, next: NextFunction) {
+        try {
+            const user = await User.findById(req.user!.aud);
+            if (!user || user.status !== 'active' || !user.verified) {
+                throw new AppError(401, 'Session expired, please log in again');
+            }
+            res.status(200).json(await issueTokens(user));
+        } catch (e) {
+            next(e);
+        }
+    }
+
+    static async logout(req: Request, res: Response, next: NextFunction) {
+        try {
+            await Jwt.revokeRefresh(req.user!.aud);
+            res.status(200).json({ message: 'Logged out successfully', status: 200 });
+        } catch (e) {
+            next(e);
+        }
+    }
+
+    static async updatePhoto(req: Request, res: Response, next: NextFunction) {
+        try {
+            const photo = GlobalUtilis.filePath(req.file!);
+            const old = await User.findByIdAndUpdate(req.user!.aud, { photo });
+            if (!old) {
+                await GlobalUtilis.removeFile(photo);
+                throw new AppError(404, 'User not found');
+            }
+            await GlobalUtilis.removeFile(old.photo);
+            res.status(200).json({ message: 'Photo updated successfully', status: 200, user: { ...old.toJSON(), photo } });
+        } catch (e) {
+            next(e);
         }
     }
 }
-
-

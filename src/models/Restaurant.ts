@@ -1,13 +1,15 @@
-import * as mongoose from "mongoose";
+import mongoose from "mongoose";
 
 
 const restaurantSchema = new mongoose.Schema({
     user_id: {
         type: mongoose.Schema.Types.ObjectId,
+        ref: "users",
         required: true
     },
     city_id: {
         type: mongoose.Schema.Types.ObjectId,
+        ref: "City",
         required: true
     },
     name: {
@@ -53,6 +55,10 @@ const restaurantSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    ratings_count: {
+        type: Number,
+        default: 0
+    },
     isClosed: {
         type: Boolean,
         default: false
@@ -67,6 +73,8 @@ const restaurantSchema = new mongoose.Schema({
         default: Date.now
     }
 });
+
+restaurantSchema.index({ location: '2dsphere' });
 
 export default mongoose.model("restaurant", restaurantSchema);
 

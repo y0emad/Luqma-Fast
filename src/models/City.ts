@@ -1,4 +1,4 @@
-import * as mongoose from "mongoose";
+import mongoose from "mongoose";
 
 
 const CitySchema = new mongoose.Schema({
