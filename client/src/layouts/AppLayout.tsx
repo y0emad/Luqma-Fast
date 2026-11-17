@@ -188,21 +188,20 @@ export function AppLayout() {
           <div>
             <p className="mt-0 mb-3 text-sm font-bold text-white">{t('footer.explore')}</p>
             <ul className="m-0 flex list-none flex-col gap-2 p-0 text-sm">
-              <li>
-                <Link to="/" className="text-white/75 no-underline hover:text-sun">
-                  {t('nav.home')}
-                </Link>
-              </li>
-              <li>
-                <Link to="/cart" className="text-white/75 no-underline hover:text-sun">
-                  {t('nav.cart')}
-                </Link>
-              </li>
-              <li>
-                <Link to={user ? '/orders' : '/login'} className="text-white/75 no-underline hover:text-sun">
-                  {t('nav.orders')}
-                </Link>
-              </li>
+              {(isCustomer
+                ? [
+                    { to: '/', label: t('nav.home') },
+                    { to: '/cart', label: t('nav.cart') },
+                    { to: user ? '/orders' : '/login', label: t('nav.orders') },
+                  ]
+                : nav
+              ).map((item) => (
+                <li key={item.to}>
+                  <Link to={item.to} className="text-white/75 no-underline hover:text-sun">
+                    {item.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
           <div>

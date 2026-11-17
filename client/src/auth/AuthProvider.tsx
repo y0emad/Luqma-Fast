@@ -33,6 +33,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:logout', onLogout)
   }, [])
 
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== TOKEN_KEY || e.oldValue === e.newValue) return
+      if (!e.newValue) {
+        setUser(null)
+        return
+      }
+      api
+        .get<{ user: User }>('/users/me')
+        .then((res) => setUser(res.data.user))
+        .catch(() => setUser(null))
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [])
+
   const loginWithTokens = useCallback((token: string, refreshToken: string, next: User) => {
     saveTokens(token, refreshToken)
     setUser(next)
