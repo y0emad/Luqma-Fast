@@ -3,6 +3,7 @@ import Category from "../models/Category";
 import Restaurant from "../models/Restaurant";
 import User from "../models/User";
 import { GlobalUtilis } from "../Utilis/GlobalUtilis";
+import { listReviews } from "../services/ReviewService";
 import { withOpenFlag } from "../Utilis/OpeningHours";
 
 const EARTH_RADIUS_KM = 6378.1;
@@ -76,6 +77,17 @@ export class RestaurantControllers {
                 Restaurant.find().sort({ created_at: -1 }).skip(skip).limit(perPage),
             ]);
             res.status(200).json({ message: 'Restaurants retrieved successfully', status: 200, data, pagination: GlobalUtilis.pagination(page, perPage, total) });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async getReviews(req: Request, res: Response, next: NextFunction) {
+        try {
+            const restaurant = await Restaurant.findById(req.params.id, { rating: 1, ratings_count: 1 });
+            if (!restaurant) return res.status(404).json({ message: 'Restaurant not found', status: 404 });
+            const result = await listReviews(restaurant._id, req.query);
+            res.status(200).json({ status: 200, rating: restaurant.rating, ratings_count: restaurant.ratings_count, ...result });
         } catch (error) {
             next(error);
         }

@@ -1,5 +1,6 @@
 import { body, param, query } from "express-validator";
 import { ORDER_STATUSES } from "../Utilis/OrderStatus";
+import { geoPoint } from "./RestaurantValidator";
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -20,6 +21,7 @@ export class DashboardValidator {
             body('delivery_time', 'Delivery time must not be empty').optional().isString().notEmpty(),
             body('delivery_fee', 'Delivery fee must be a positive number').optional().isFloat({ min: 0 }).toFloat(),
             body('isClosed', 'isClosed must be true or false').optional().isBoolean().toBoolean(),
+            geoPoint().optional(),
         ];
     }
 

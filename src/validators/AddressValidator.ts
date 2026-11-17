@@ -5,7 +5,7 @@ import Address from "../models/Address";
 export class AddressValidator {
     static createAddress() {
         return [
-            body('landmark', 'Landmark is required').isString(),
+            body('landmark', 'Landmark must be a string').optional().isString().isLength({ max: 200 }),
             body('lat', 'Latitude is required').isFloat(),
             body('lon', 'Longitude is required').isFloat(),
             body('house', 'House number is required').isString(),

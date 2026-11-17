@@ -18,6 +18,7 @@ export interface IOrder {
     delivery_charge: number;
     payment_status: boolean;
     payment_method: 'cash' | 'card';
+    review?: { rating: number; comment?: string; created_at: Date };
     created_at: Date;
     updated_at: Date;
 }
@@ -92,11 +93,20 @@ const OrderSchema = new mongoose.Schema<IOrder>({
         enum: ["cash", "card"],
         required: true
     },
+    review: {
+        type: new mongoose.Schema({
+            rating: { type: Number, min: 1, max: 5, required: true },
+            comment: { type: String, maxlength: 500 },
+            created_at: { type: Date, default: Date.now },
+        }, { _id: false }),
+        default: undefined,
+    },
 }, {
     timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' }
 });
 
 OrderSchema.index({ restaurant_id: 1, created_at: -1 });
 OrderSchema.index({ user_id: 1, created_at: -1 });
+OrderSchema.index({ restaurant_id: 1, 'review.created_at': -1 }, { partialFilterExpression: { 'review.rating': { $exists: true } } });
 
 export default mongoose.model<IOrder>("Orders", OrderSchema);

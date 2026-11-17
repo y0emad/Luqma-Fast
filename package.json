@@ -14,7 +14,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:seed": "tsx src/seed.ts",
-    "lock:linux": "docker run --rm -v \"$PWD:/app\" -w /app node:24-slim npm install --package-lock-only --ignore-scripts"
+    "lock:linux": "docker run --rm -v \"$PWD:/app\" -w /app node:24-slim sh -c \"npm install --package-lock-only --ignore-scripts && cd client && npm install --package-lock-only --ignore-scripts\"",
+    "dev:client": "npm --prefix client run dev",
+    "build:client": "npm --prefix client run build"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

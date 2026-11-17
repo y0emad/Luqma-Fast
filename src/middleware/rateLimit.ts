@@ -28,3 +28,12 @@ export const apiLimiter = rateLimit({
     skip: () => process.env.NODE_ENV === 'test',
     message: limitMessage('Too many requests, please try again later'),
 });
+
+export const contactLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    limit: 5,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    skip: () => process.env.NODE_ENV === 'test',
+    message: limitMessage('Too many messages, please try again later'),
+});

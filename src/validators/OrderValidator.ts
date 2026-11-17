@@ -65,6 +65,14 @@ export class OrderValidator {
         ]
     }
 
+    static review() {
+        return [
+            param('id', 'Order ID is invalid').isMongoId(),
+            body('rating', 'Rating must be from 1 to 5').isInt({ min: 1, max: 5 }).toInt(),
+            body('comment', 'Comment must be under 500 characters').optional({ values: 'falsy' }).isString().trim().isLength({ max: 500 }),
+        ]
+    }
+
     static updateStatus() {
         return [
             param('id', 'Order ID is invalid').isMongoId(),

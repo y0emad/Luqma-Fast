@@ -1,3 +1,12 @@
+FROM node:24-slim AS client
+WORKDIR /client
+
+COPY client/package.json client/package-lock.json ./
+RUN npm ci
+
+COPY client ./
+RUN npm run build
+
 FROM node:24-slim AS build
 WORKDIR /app
 
@@ -16,6 +25,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
+COPY --from=client /client/dist ./client/dist
 
 RUN mkdir -p src/uploads/banner src/uploads/ItemsImg src/uploads/photoUser src/uploads/restaurantImg \
   && chown -R node:node src/uploads

@@ -9,6 +9,29 @@ beforeEach(resetDb);
 
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
 
+describe("restaurant location", () => {
+  it("the owner can move the pin, and nearby search follows it", async () => {
+    const restaurant = await createRestaurant();
+    const owner = await ownerOf(restaurant);
+    const giza = { type: "Point", coordinates: [31.1342, 29.9792] };
+
+    const moved = await api().patch("/api/my-restaurant").set(auth(owner)).send({ location: giza });
+    expect(moved.status).toBe(200);
+    expect(moved.body.data.location.coordinates).toEqual(giza.coordinates);
+
+    const nearCairo = await api().get("/api/restaurants/getNearbyRestaurants?latitude=30.0444&longitude=31.2357&radius=5");
+    expect(nearCairo.body.data).toHaveLength(0);
+    const nearGiza = await api().get("/api/restaurants/getNearbyRestaurants?latitude=29.98&longitude=31.134&radius=5");
+    expect(nearGiza.body.data).toHaveLength(1);
+  });
+
+  it("rejects a location that isn't a valid point", async () => {
+    const owner = await ownerOf(await createRestaurant());
+    const res = await api().patch("/api/my-restaurant").set(auth(owner)).send({ location: { type: "Point", coordinates: [500, 30] } });
+    expect(res.status).toBe(422);
+  });
+});
+
 describe("/my-restaurant access", () => {
   it("is for restaurant accounts only", async () => {
     expect((await api().get("/api/my-restaurant")).status).toBe(401);

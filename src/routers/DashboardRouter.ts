@@ -17,6 +17,7 @@ class DashboardRouter {
         this.router.put('/image', upload.single('restaurantImg'), DashboardValidator.image('restaurantImg'), check, DashboardControllers.updateImage);
 
         this.router.get('/orders', DashboardValidator.orders(), check, DashboardControllers.getOrders);
+        this.router.get('/reviews', DashboardControllers.getReviews);
         this.router.get('/stats', DashboardValidator.stats(), check, DashboardControllers.getStats);
 
         this.router.get('/categories', DashboardControllers.getCategories);

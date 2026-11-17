@@ -12,6 +12,7 @@
 - **express-validator**, **helmet**, **express-rate-limit**, **multer** (image uploads)
 - **Paymob** (Intention API + Unified Checkout) for online card / wallet payments in EGP
 - **Nodemailer (SMTP) or Brevo HTTP API** for emails
+- **React 19 + Vite + Ant Design + Tailwind** frontend in `client/`: Arabic (RTL) and English, light and dark mode, served by the API in production
 - **Vitest + Supertest** for tests, **Docker** + **GitHub Actions** for CI
 
 ## Features
@@ -25,7 +26,19 @@
 - Order lifecycle: pending → accepted → preparing → on the way → delivered (or cancelled), with a history of who changed what, and an email on every change
 - Opening hours: no orders while a restaurant is closed, `is_open` on every restaurant in the API
 - Restaurant dashboard: its orders by status, menu and categories, opening hours, and daily stats (revenue, average order, best sellers)
-- Saved delivery addresses, private to each user
+- Saved delivery addresses, private to each user, picked on a map
+- Ratings: one per delivered order, with a comment; the restaurant shows the real average, the count and a star breakdown
+- Contact form for customers and restaurants, saved for the admin inbox and emailed to the admin; terms and privacy pages
+
+## Website
+
+One React app for the three kinds of accounts, in Arabic or English (one tap, RTL and LTR) with light and dark mode:
+
+- **Customers**: restaurants near them (or a chosen city) with live open or closed badges, search and cuisine filters, a menu with a cart that keeps one restaurant at a time, checkout with cash or card (Paymob), and live order tracking.
+- **Restaurants** (`/restaurant`): today's numbers and best sellers, a live orders board (accept, prepare, send out, deliver or reject, refreshed every 15 seconds), menu and photos, opening hours and fees.
+- **Admins** (`/admin`): add cities and restaurants on a map (search a place or drop the pin; the address and the closest city fill in by themselves), and read contact messages.
+
+Brand colors: red `#E53935` for actions, yellow `#FFC107` for offers and ratings, `#FAFAFA` background, `#212121` text.
 
 ## Design decisions
 
@@ -72,13 +85,16 @@ cp .env.example .env          # then fill in the JWT secrets, email and admin va
 npm install
 docker compose up -d redis    # add "mongo" if you don't have MongoDB installed (it's on port 27018)
 npm run db:seed -- --demo     # admin account + a demo restaurant in Cairo
-npm run dev                   # http://localhost:3000
+npm run dev                   # API on http://localhost:3000
+# in a second terminal: the website
+npm --prefix client install
+npm run dev:client            # http://localhost:5173 (calls the API through Vite's proxy)
 ```
 
 ### Run everything with Docker
 
 ```bash
-docker compose up -d --build  # API + MongoDB + Redis, uploads kept in a volume
+docker compose up -d --build  # website + API + MongoDB + Redis on http://localhost:3000, uploads kept in a volume
 ```
 
 ### Scripts
@@ -86,11 +102,12 @@ docker compose up -d --build  # API + MongoDB + Redis, uploads kept in a volume
 | Script | What it does |
 |---|---|
 | `npm run dev` | API with reload on change (tsx + nodemon) |
+| `npm run dev:client` / `npm run build:client` | Website dev server / production build into `client/dist` (served by the API) |
 | `npm run build` / `npm start` | Compile to `dist/` / run the compiled API |
 | `npm test` | All tests (needs MongoDB and Redis running) |
 | `npm run typecheck` | TypeScript check, no output |
 | `npm run db:seed` | Create the admin from `.env` (`-- --demo` adds demo data) |
-| `npm run lock:linux` | After adding a package on Windows: rebuilds `package-lock.json` in Linux, so `npm ci` works in Docker and CI |
+| `npm run lock:linux` | After adding a package on Windows: rebuilds both lockfiles (API and `client/`) in Linux, so `npm ci` works in Docker and CI |
 
 ## API
 
@@ -118,6 +135,7 @@ All routes are under `/api`. Send `Authorization: Bearer <token>` for the ones m
 |---|---|---|
 | GET | `/api/restaurants/getNearbyRestaurants` 🔒 | `?latitude&longitude&radius(km)&page` |
 | GET | `/api/restaurants/searchNearbyRestaurants` 🔒 | same + `&name` |
+| GET | `/api/restaurants/:id/reviews` | public reviews: average, count, star breakdown, newest first (first names only), `?page` |
 | GET | `/api/restaurants/getRestaurants` 👑 | all restaurants, paginated |
 | POST | `/api/restaurants/createRestaurant` 👑 | owner `email`/`password` + restaurant fields, `location` as GeoJSON point, optional image `restaurantImg` |
 | GET | `/api/items/getMenu/:restaurantId` 🔒 | restaurant, categories and active items |
@@ -134,6 +152,7 @@ All routes are under `/api`. Send `Authorization: Bearer <token>` for the ones m
 | GET | `/:id` 🔒 | one order: its customer, its restaurant or an admin (anyone else gets 404) |
 | POST | `/:id/pay` 🔒 | a new Paymob checkout link for an unpaid card order. `{ phone? }` |
 | GET | `/:id/payments` 🔒 | the payment attempts of your order |
+| POST | `/:id/review` 🔒 | `{ rating: 1-5, comment? }`, once, after the order is delivered |
 | PATCH | `/:id/cancel` 🔒 | the customer, while it's `awaiting_payment` or `pending` (refunded if it was paid). `{ reason? }` |
 | PATCH | `/:id/status` 🍽️ / 👑 | `{ status: "accepted" \| "preparing" \| "on_the_way" \| "delivered" \| "cancelled", reason? }`, one step at a time |
 
@@ -146,6 +165,7 @@ For restaurant accounts (created by an admin with `createRestaurant`). Everythin
 | PATCH | `/` | `name, description, address, opening_time, closing_time, delivery_time, delivery_fee, isClosed` |
 | PUT | `/image` | multipart, field `restaurantImg` |
 | GET | `/orders` | its orders, newest first, `?status&page` |
+| GET | `/reviews` | its reviews, same shape as the public list |
 | GET | `/stats` | `?day=YYYY-MM-DD` (default today, Cairo time): orders per status, revenue, average order, top 5 items |
 | GET / POST | `/categories` | list / `{ name }` |
 | DELETE | `/categories/:id` | only when it has no items |
@@ -159,6 +179,13 @@ For restaurant accounts (created by an admin with `createRestaurant`). Everythin
 |---|---|---|
 | POST | `/paymob/webhook?hmac=…` | Paymob's "transaction processed" callback. Sent per payment as `notification_url`; you can also set it as the callback URL of your integration |
 | GET | `/paymob/return` | where Paymob sends the customer after paying; redirects to `FRONTEND_URL/orders/:id?payment=success\|failed\|pending` |
+
+### Contact `/api/contact`
+| Method | Route | |
+|---|---|---|
+| POST | `/` | `{ name, email, subject: order \| payment \| restaurant \| other, message, order_ref? }`, 5 per hour per visitor; saved and emailed to `ADMIN_EMAIL` |
+| GET | `/` 👑 | the inbox, `?unread=true&page` |
+| PATCH | `/:id` 👑 | `{ read }` |
 
 ### Addresses `/api/addresses` 🔒
 `POST /createAddress`, `GET /getAddresses?page`, `GET /getAddressesLimit?limit&offset`, `GET /getAddress/:id`, `GET /checkAddress?lat&lon`, `PATCH /updateAddress/:id`, `DELETE /deleteAddress/:id`
@@ -228,10 +255,9 @@ src/
   types/express.d.ts  req.user typing
 tests/                Vitest + Supertest
 postman/              Postman collection
+client/               React website: pages/ (customer, restaurant/, admin/), auth, cart, i18n (ar / en)
 ```
 
 ## Roadmap
 
 - Real-time order tracking with Socket.io
-- Reviews and ratings
-- React frontend

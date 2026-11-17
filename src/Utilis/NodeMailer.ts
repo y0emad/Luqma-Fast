@@ -119,6 +119,24 @@ type OrderStatusEmail = {
     reason?: string;
 };
 
+type ContactEmail = { name: string; email: string; subject: string; message: string; orderRef?: string; id: string };
+
+export async function sendContactNotification(to: string, c: ContactEmail) {
+    try {
+        await sendMail({
+            to,
+            subject: `New message (${c.subject}) from ${c.name} - Luqma Fast`,
+            html: layout('New message from the website',
+                paragraph(`<strong>${escapeHtml(c.name)}</strong> &lt;${escapeHtml(c.email)}&gt;`) +
+                (c.orderRef ? paragraph(`Order: #${escapeHtml(c.orderRef)}`) : '') +
+                paragraph(escapeHtml(c.message).replace(/\n/g, '<br>')) +
+                note(`Message ${escapeHtml(c.id)} · reply to the sender's email`)),
+        });
+    } catch (error) {
+        console.error('Error sending contact notification:', error);
+    }
+}
+
 export async function sendOrderStatusEmail(to: string, o: OrderStatusEmail) {
     try {
         await sendMail({

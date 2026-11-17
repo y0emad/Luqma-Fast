@@ -19,7 +19,7 @@ const AddressSchema = new mongoose.Schema({
 
     landmark: {
         type: String,
-        required: true
+        default: ''
     },
     lat: {
         type: Number,

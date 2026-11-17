@@ -20,6 +20,7 @@ class OrderRouter {
     }
 
     postRoutes() {
+        this.router.post('/:id/review', GlobalUtilis.authenticateToken, OrderValidator.review(), MiddleWare.checkErrors, OrderControllers.reviewOrder);
         this.router.post('/:id/pay', GlobalUtilis.authenticateToken, OrderValidator.payOrder(), MiddleWare.checkErrors, OrderControllers.payOrder);
         this.router.post('/createOrder', GlobalUtilis.authenticateToken, GlobalUtilis.requireVerified, OrderValidator.createOrder(), MiddleWare.checkErrors, OrderControllers.createOrder);
     }

@@ -18,7 +18,7 @@ class ItemsRouter {
 
     getRoutes() {
         this.router.get('/getItems', ItemsControllers.getItems);
-        this.router.get('/getMenu/:restaurantId',GlobalUtilis.authenticateToken,ItemsValidator.getMenu(),MiddleWare.checkErrors ,ItemsControllers.getMenu);
+        this.router.get('/getMenu/:restaurantId', ItemsValidator.getMenu(), MiddleWare.checkErrors, ItemsControllers.getMenu);
 
 
 

@@ -10,6 +10,7 @@ vi.mock("../src/Utilis/NodeMailer", () => ({
   sendResetPasswordEmail: vi.fn(async () => undefined),
   sendOrderConfirmationEmail: vi.fn(async () => undefined),
   sendOrderStatusEmail: vi.fn(async () => undefined),
+  sendContactNotification: vi.fn(async () => undefined),
   sendMail: vi.fn(async () => undefined),
   escapeHtml: (s: string) => s,
 }));

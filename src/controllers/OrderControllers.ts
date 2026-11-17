@@ -8,6 +8,7 @@ import { isPaymobConfigured } from "../Utilis/Paymob";
 import { transition } from "../services/OrderTransitions";
 import { normalizePhone, settleCancelledOrder, startPayment, PAYMENT_WINDOW_MS } from "../services/PaymentService";
 import Payment from "../models/Payment";
+import { addReview } from "../services/ReviewService";
 import { isOpenAt } from "../Utilis/OpeningHours";
 import { canRestaurantMove, ORDER_STATUSES, USER_CANCELLABLE, type Actor, type OrderStatus } from "../Utilis/OrderStatus";
 
@@ -195,6 +196,15 @@ export class OrderControllers {
             if (!order) throw new AppError(404, 'Order not found');
             const data = await Payment.find({ order_id: req.params.id }).sort({ created_at: -1 });
             res.status(200).json({ status: 200, data });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async reviewOrder(req: Request, res: Response, next: NextFunction) {
+        try {
+            const result = await addReview(String(req.params.id), req.user!.aud, Number(req.body.rating), req.body.comment);
+            res.status(201).json({ message: 'Thanks for your rating', status: 201, data: result.review, restaurant: result.restaurant });
         } catch (error) {
             next(error);
         }

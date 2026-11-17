@@ -6,6 +6,17 @@ const parseJson = (value: unknown) => {
     try { return JSON.parse(value); } catch { return value; }
 };
 
+export const geoPoint = () =>
+    body('location', 'Location must be a GeoJSON point: {"type":"Point","coordinates":[lng,lat]}')
+        .customSanitizer(parseJson)
+        .custom((value) => {
+            const [lng, lat] = value?.coordinates ?? [];
+            return value?.type === 'Point' && Array.isArray(value.coordinates) && value.coordinates.length === 2
+                && Number.isFinite(lng) && Number.isFinite(lat)
+                && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
+        })
+        .customSanitizer((value) => ({ type: 'Point', coordinates: [Number(value.coordinates[0]), Number(value.coordinates[1])] }));
+
 const geoQuery = () => [
     query('latitude', 'Latitude must be between -90 and 90').isFloat({ min: -90, max: 90 }),
     query('longitude', 'Longitude must be between -180 and 180').isFloat({ min: -180, max: 180 }),
@@ -32,14 +43,7 @@ export class RestaurantValidator {
                     return [...new Set(list.map((c: unknown) => String(c).trim()).filter(Boolean))];
                 })
                 .isArray({ min: 1 }),
-            body('location', 'Location must be a GeoJSON point: {"type":"Point","coordinates":[lng,lat]}')
-                .customSanitizer(parseJson)
-                .custom((value) => {
-                    const [lng, lat] = value?.coordinates ?? [];
-                    return value?.type === 'Point' && Array.isArray(value.coordinates) && value.coordinates.length === 2
-                        && Number.isFinite(lng) && Number.isFinite(lat)
-                        && lng >= -180 && lng <= 180 && lat >= -90 && lat <= 90;
-                }),
+            geoPoint(),
             body('opening_time', 'Opening time must be HH:mm').matches(/^([01]\d|2[0-3]):[0-5]\d$/),
             body('closing_time', 'Closing time must be HH:mm').matches(/^([01]\d|2[0-3]):[0-5]\d$/),
             body('address', 'Restaurant address is required').isString().trim().notEmpty(),

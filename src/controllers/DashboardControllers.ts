@@ -7,6 +7,7 @@ import { GlobalUtilis } from "../Utilis/GlobalUtilis";
 import { AppError } from "../Utilis/AppError";
 import { dayRange, withOpenFlag, APP_TZ } from "../Utilis/OpeningHours";
 import { ORDER_STATUSES } from "../Utilis/OrderStatus";
+import { listReviews } from "../services/ReviewService";
 
 const pick = (body: Record<string, any>, keys: string[]) =>
     Object.fromEntries(keys.filter((k) => body[k] !== undefined).map((k) => [k, body[k]]));
@@ -24,7 +25,7 @@ export class DashboardControllers {
 
     static async updateProfile(req: Request, res: Response, next: NextFunction) {
         try {
-            const update = pick(req.body, ['name', 'description', 'address', 'opening_time', 'closing_time', 'delivery_time', 'delivery_fee', 'isClosed']);
+            const update = pick(req.body, ['name', 'description', 'address', 'opening_time', 'closing_time', 'delivery_time', 'delivery_fee', 'isClosed', 'location']);
             const data = await Restaurant.findByIdAndUpdate(req.restaurant._id, update, { new: true });
             res.status(200).json({ message: 'Restaurant updated', status: 200, data: withOpenFlag(data) });
         } catch (error) {
@@ -203,6 +204,15 @@ export class DashboardControllers {
                     top_items: facet.topItems.map((i: any) => ({ ...i, revenue: round2(i.revenue) })),
                 },
             });
+        } catch (error) {
+            next(error);
+        }
+    }
+
+    static async getReviews(req: Request, res: Response, next: NextFunction) {
+        try {
+            const result = await listReviews(req.restaurant._id, req.query);
+            res.status(200).json({ status: 200, rating: req.restaurant.rating, ratings_count: req.restaurant.ratings_count, ...result });
         } catch (error) {
             next(error);
         }

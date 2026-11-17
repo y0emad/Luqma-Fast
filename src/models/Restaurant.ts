@@ -55,6 +55,10 @@ const restaurantSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
+    ratings_count: {
+        type: Number,
+        default: 0
+    },
     isClosed: {
         type: Boolean,
         default: false
